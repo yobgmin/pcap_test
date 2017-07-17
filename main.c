@@ -124,9 +124,8 @@ int main(int argc, char *argv[])
    char filter_exp[] = "port 80";	/* The filter expression */ //-> 80으로 변경한다
    bpf_u_int32 mask;		/* Our netmask */
    bpf_u_int32 net;		/* Our IP */
-   struct pcap_pkthdr header;	/* The header that pcap gives us */
+   struct pcap_pkthdr *header;	/* The header that pcap gives us */
    const u_char *packet;		/* The actual packet */
-   u_char * packet2;
 
    struct ethernet_header *ether_h;
    struct ip_header *ip_h;
@@ -165,11 +164,10 @@ int main(int argc, char *argv[])
    /* Grab a packet */
    while(1) {
        i=0;
-       packet = pcap_next(handle, &header); // header : 패킷이 잡힌 시간, 길이 정보
-       /* Print its length */
-       if (packet == NULL)
+       res = pcap_next_ex(handle, &header, &packet); // header : 패킷이 잡힌 시간, 길이 정보
+       if (res == 0 || packet == NULL)
            continue;
-       printf("Jacked a packet with length of [%d]\n", header.len);
+       printf("Jacked a packet with length of [%d]\n", (*header).len);
        ether_h = (struct ethernet_header*)(packet);
 
        ip_h= (struct ip_header*)(packet + SIZE_ETHERNET);
@@ -197,7 +195,7 @@ int main(int argc, char *argv[])
 
    http = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
    if(http != NULL) {
-       for(i=0; i<(header.len - (14+size_ip+size_tcp)); i++) {
+       for(i=0; i<((*header).len - (14+size_ip+size_tcp)); i++) {
            if (http[i] >=0x20 && http[i] <=0x7f)
                printf("%c ", http[i]);
            else
