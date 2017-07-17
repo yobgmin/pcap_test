@@ -207,10 +207,6 @@ int main(int argc, char *argv[])
        }
    }
 
-   http = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
-   /* print http */
-   puts(http);
-
    }
    pcap_close(handle);
    return(0);
