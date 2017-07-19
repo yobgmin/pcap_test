@@ -56,12 +56,13 @@ struct tcp_header {
     u_int16_t th_urp;		/* urgent pointer */
 };
 
+/* Previous calculate IP
 u_char * IPtostr(u_int32_t netIP, u_char * hostIP) {
     hostIP[0] = netIP & 0xff;
     hostIP[1] = (netIP >> 4) & 0xff;
     hostIP[2] = (netIP >> 8) & 0xff;
     hostIP[3] = netIP >> 12;
-}
+} */
 
 const u_char * prt(u_char p) {
     switch (p) {
@@ -88,7 +89,9 @@ int PrintEtherH(struct ethernet_header * ether_h) {
 }
 
 int PrintIPH(struct ip_header * ip_h) {
-    u_char ip[4];
+    u_char ip[16];
+
+    //u_char ip[4]; Previous print IP
     printf("================IP======================\n");
     printf("IP Version : %d\n", IP_V(ip_h));
     printf("IP Header Size : %d\n", IP_HL(ip_h)*4);
@@ -97,10 +100,18 @@ int PrintIPH(struct ip_header * ip_h) {
     printf("Time To Live : %x\n", ip_h->ip_ttl);
     printf("Protocol Identifier : %s\n", prt(ip_h->ip_p));
 
+    inet_ntop(AF_INET, &(ip_h->ip_des), ip, 16);
+    printf("Destination IP : %s\n", ip);
+    inet_ntop(AF_INET, &(ip_h->ip_src), ip, 16);
+    printf("Source IP : %s\n", ip);
+
+    /*
     IPtostr(ip_h->ip_des, ip);
     printf("Destination IP : %d.%d.%d.%d\n", ip[0], ip[1],ip[2],ip[3]);
     IPtostr(ip_h->ip_src, ip);
     printf("Source IP : %d.%d.%d.%d\n", ip[0], ip[1],ip[2],ip[3]);
+    */
+
     printf("================IP======================\n");
 
     return 0;
