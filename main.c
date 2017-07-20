@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <netinet/in.h>
+#include <ctype.h>
 
 #define ETHER_ADDR_LEN	6
 #define SIZE_ETHERNET 14
@@ -64,6 +65,7 @@ u_char * IPtostr(u_int32_t netIP, u_char * hostIP) {
     hostIP[3] = netIP >> 12;
 } */
 
+/* Always TCP, so function has no use.
 const u_char * prt(u_char p) {
     switch (p) {
     case 1:
@@ -77,7 +79,7 @@ const u_char * prt(u_char p) {
     default:
         return "error";
     }
-}
+} */
 
 int PrintEtherH(struct ethernet_header * ether_h) {
     printf("================ETHERNET================\n");
@@ -89,7 +91,7 @@ int PrintEtherH(struct ethernet_header * ether_h) {
 }
 
 int PrintIPH(struct ip_header * ip_h) {
-    u_char ip[16];
+    u_char ip[INET_ADDRSTRLEN];
 
     //u_char ip[4]; Previous print IP
     printf("================IP======================\n");
@@ -98,11 +100,11 @@ int PrintIPH(struct ip_header * ip_h) {
     printf("Type-of Priority Flags : %x\n", ip_h->ip_tos);
     printf("Total IP Length : %d\n", ip_h->ip_len);
     printf("Time To Live : %x\n", ip_h->ip_ttl);
-    printf("Protocol Identifier : %s\n", prt(ip_h->ip_p));
+    printf("Protocol Identifier : TCP");
 
-    inet_ntop(AF_INET, &(ip_h->ip_des), ip, 16);
+    inet_ntop(AF_INET, &(ip_h->ip_des), ip, INET_ADDRSTRLEN);
     printf("Destination IP : %s\n", ip);
-    inet_ntop(AF_INET, &(ip_h->ip_src), ip, 16);
+    inet_ntop(AF_INET, &(ip_h->ip_src), ip, INET_ADDRSTRLEN);
     printf("Source IP : %s\n", ip);
 
     /*
@@ -119,8 +121,8 @@ int PrintIPH(struct ip_header * ip_h) {
 
 int PrintTCPH(struct tcp_header * tcp_h) {
     printf("================TCP=====================\n");
-    printf("Source Port : %d\n", tcp_h->th_sport);
-    printf("Destination Port: %d\n", tcp_h->th_dport);
+    printf("Source Port : %d\n", ntohs(tcp_h->th_sport));
+    printf("Destination Port: %d\n", ntohs(tcp_h->th_dport));
     printf("Flag Bits : %x\n", tcp_h->th_flags);
     printf("CheckSum : %x\n", tcp_h->th_sum);
 
@@ -148,9 +150,14 @@ int main(int argc, char * argv[])
     u_int32_t size_tcp;
     u_char * http;
 
+    if ( argc != 2) {
+        printf("Usage : (sudo) ./pcap_test [device]\n"); // Check argc, too.
+        return 0;
+    }
     /* Define the device */
     if ( argv[1] == NULL) {
-        printf("Usage : ./pcap_test [device]");
+        printf("Usage : ./pcap_test [device]\n");
+        return 0;
     }
     dev = argv[1];
     /* Open the session in promiscuous mode */
@@ -175,30 +182,31 @@ int main(int argc, char * argv[])
         if (res == 0 || packet == NULL)
             continue;
         if (res == -1 || res == -2) // Error while grabbing packet.
-            return 0;
+            break; // I edited it.
         printf("Jacked a packet with length of [%d]\n", (*header).len);
         ether_h = (struct ethernet_header*)(packet);
 
         if ( ntohs(ether_h->ether_type) != 0x0800) {
             printf("Not IP Header\n");
             continue;
+
         }
         ip_h= (struct ip_header*)(packet + SIZE_ETHERNET);
 
-        if(ip_h -> ip_p != 6) { // when not using tcp Protocol
+        if(ip_h -> ip_p != IPPROTO_TCP) { // when not using tcp Protocol
             printf("Not TCP Protocol\n");
         }
         size_ip = IP_HL(ip_h)*4;
         if (size_ip < 20) {
             printf("   * Invalid IP header length: %u bytes\n", size_ip);
-            return;
+            return 0;
         }
 
         tcp_h = (struct tcp_header*)(packet + SIZE_ETHERNET + size_ip);
         size_tcp = TH_OFF(tcp_h)*4;
         if(size_tcp < 20) {
             printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
-            return;
+            return 0;
 
         }
         /* And close the session */
@@ -211,7 +219,7 @@ int main(int argc, char * argv[])
         http = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
         if(http != NULL) {
             for(i=0; i<(htons(ip_h->ip_len) - size_ip - size_tcp); i++) {
-                if (http[i] >=0x20 && http[i] <=0x7f)
+                if(isprint(http[i]))
                     printf("%c ", http[i]);
                 else
                     printf(". ");
